@@ -3,7 +3,6 @@ import java.util.Scanner;
 
 public class Main {
 
-    // ===== Book class =====
     static class Book {
         private String title;
         private String author;
@@ -41,7 +40,6 @@ public class Main {
         }
     }
 
-    // ===== Library class =====
     static class Library {
         private ArrayList<Book> books;
 
@@ -111,7 +109,6 @@ public class Main {
         }
     }
 
-    // ===== Main program with menu =====
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         Library library = new Library();
