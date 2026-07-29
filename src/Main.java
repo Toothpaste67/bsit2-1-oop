@@ -71,3 +71,5 @@ class Student {
         this.grade = grade;
     }
 }
+
+//gwapo ko
