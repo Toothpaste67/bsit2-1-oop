@@ -1,113 +1,159 @@
+// Main.java
+// COMPLETE - this is the menu that tests your work.
+// It only ever talks to PaymentGateway and Payment - never to the
+// GCashPayment / MayaPayment / CashPayment classes directly by name
+// (except right here, where a NEW payment is actually created - that
+// part has to happen somewhere, and it is not PaymentGateway's job).
+
 import java.util.Scanner;
 
 public class Main {
 
-    // Simple object used to demonstrate shared-reference mutation
-    static class Box {
-        int value;
-        Box(int value) {
-            this.value = value;
-        }
-    }
+    private static final Scanner scanner = new Scanner(System.in);
+    private static final PaymentGateway gateway = new PaymentGateway();
+    private static int nextId = 1004; // 1001-1003 are the preloaded samples
 
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        int choice = -1;
+        loadSamplePayments();
+        printBanner();
 
-        while (choice != 0) {
-            System.out.println("===== JAVA TOOLBOX =====");
-            System.out.println("1 - Greet me");
-            System.out.println("2 - Area (square or rectangle)");
-            System.out.println("3 - Sum of numbers");
-            System.out.println("4 - Swap demo (pass-by-value)");
-            System.out.println("5 - Box demo (object mutation)");
-            System.out.println("0 - Exit");
-            System.out.print("Choose an option: ");
-            choice = Integer.parseInt(scanner.nextLine().trim());
+        boolean running = true;
+        while (running) {
+            printMenu();
+            String choice = scanner.nextLine().trim();
 
             switch (choice) {
-                case 1: {
-                    System.out.print("Enter your name: ");
-                    String name = scanner.nextLine();
-                    System.out.println(greet(name));
+                case "1":
+                    makePayment();
                     break;
-                }
-                case 2: {
-                    System.out.print("Sides (1 = square, 2 = rectangle): ");
-                    int sides = Integer.parseInt(scanner.nextLine().trim());
-                    if (sides == 1) {
-                        System.out.print("Enter side length: ");
-                        double side = Double.parseDouble(scanner.nextLine().trim());
-                        System.out.println("Area of square = " + area(side));
-                    } else {
-                        System.out.print("Enter length: ");
-                        double length = Double.parseDouble(scanner.nextLine().trim());
-                        System.out.print("Enter width: ");
-                        double width = Double.parseDouble(scanner.nextLine().trim());
-                        System.out.println("Area of rectangle = " + area(length, width));
-                    }
+                case "2":
+                    System.out.println();
+                    gateway.processAll();
                     break;
-                }
-                case 3: {
-                    System.out.println("Sum of 4, 8, 15 = " + sum(4, 8, 15));
-                    System.out.println("Sum of 2, 4, 6, 8, 10 = " + sum(2, 4, 6, 8, 10));
+                case "3":
+                    findPayment();
                     break;
-                }
-                case 4: {
-                    int x = 5, y = 9;
-                    System.out.println("Before swap: x = " + x + ", y = " + y);
-                    swap(x, y);
-                    System.out.println("After swap: x = " + x + ", y = " + y + " (unchanged - Java is pass-by-value)");
+                case "4":
+                    System.out.println();
+                    System.out.printf("Total collected so far: PHP %.2f%n", gateway.totalCollected());
+                    System.out.println("Number of payments on record: " + gateway.count());
                     break;
-                }
-                case 5: {
-                    Box box = new Box(10);
-                    System.out.println("Before: box.value = " + box.value);
-                    addToBox(box, 25);
-                    System.out.println("After: box.value = " + box.value + " (changed - the object is shared)");
+                case "5":
+                    System.out.println();
+                    System.out.println("Refunding every payment that can be refunded:");
+                    gateway.refundAll();
                     break;
-                }
-                case 0: {
+                case "6":
+                    System.out.println();
+                    System.out.println("Service fees (the two serviceFee methods):");
+                    gateway.showServiceFees();
+                    break;
+                case "0":
+                    running = false;
                     System.out.println("Goodbye!");
                     break;
-                }
-                default: {
-                    System.out.println("Invalid option. Try again.");
-                }
+                default:
+                    System.out.println("Please choose a number from the menu.");
             }
+            System.out.println();
         }
 
         scanner.close();
     }
 
-    static String greet(String name) {
-        return "Hello, " + name + "! Welcome to my Java Toolbox.";
+    private static void loadSamplePayments() {
+        gateway.add(new GCashPayment(1001, "Ana", 1500.00, "0917-555-0134"));
+        gateway.add(new MayaPayment(1002, "Jerome", 899.50, "jerome@liceo.edu.ph"));
+        gateway.add(new CashPayment(1003, "Liza", 250.00));
     }
 
-    static double area(double side) { // square
-        return side * side;
+    private static void printBanner() {
+        System.out.println("=========================================");
+        System.out.println("            LICEO PAY - v1.0            ");
+        System.out.println("   Campus Canteen Payment Gateway CLI   ");
+        System.out.println("=========================================");
     }
 
-    static double area(double length, double width) { // rectangle
-        return length * width;
+    private static void printMenu() {
+        System.out.println("MAIN MENU");
+        System.out.println("1. Make a new payment");
+        System.out.println("2. Show all receipts");
+        System.out.println("3. Find a payment by ID");
+        System.out.println("4. Show total collected");
+        System.out.println("5. Refund all refundable payments");
+        System.out.println("6. Show service fees");
+        System.out.println("0. Exit");
+        System.out.print("Choose an option: ");
     }
 
-    static int sum(int... numbers) {
-        int total = 0;
-        for (int n : numbers) {
-            total += n;
+    private static void makePayment() {
+        System.out.println();
+        System.out.println("1) GCash   2) Maya   3) Cash");
+        System.out.print("Choose a payment method: ");
+        String method = scanner.nextLine().trim();
+
+        System.out.print("Payer name: ");
+        String name = scanner.nextLine().trim();
+
+        double amount = readDouble("Amount: ");
+
+        Payment payment;
+        switch (method) {
+            case "1":
+                System.out.print("Mobile number: ");
+                String mobile = scanner.nextLine().trim();
+                payment = new GCashPayment(nextId++, name, amount, mobile);
+                break;
+            case "2":
+                System.out.print("Email: ");
+                String email = scanner.nextLine().trim();
+                payment = new MayaPayment(nextId++, name, amount, email);
+                break;
+            case "3":
+                payment = new CashPayment(nextId++, name, amount);
+                break;
+            default:
+                System.out.println("Not a valid payment method. Payment cancelled.");
+                return;
         }
-        return total;
+
+        gateway.add(payment);
+        System.out.println();
+        payment.printReceipt();
+        payment.printThankYou();
     }
 
-    static void swap(int a, int b) {
-        int temp = a;
-        a = b;
-        b = temp;
-        System.out.println("  (inside swap) a = " + a + ", b = " + b);
+    private static void findPayment() {
+        System.out.print("Enter the ID to search for: ");
+        String input = scanner.nextLine().trim();
+
+        int id;
+        try {
+            id = Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            System.out.println("That is not a valid number.");
+            return;
+        }
+
+        Payment found = gateway.findById(id);
+        System.out.println();
+        if (found == null) {
+            System.out.println("No payment found with ID " + id + ".");
+        } else {
+            System.out.println("Payment found:");
+            found.printReceipt();
+        }
     }
 
-    static void addToBox(Box box, int amount) {
-        box.value = box.value + amount;
+    private static double readDouble(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String input = scanner.nextLine().trim();
+            try {
+                return Double.parseDouble(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Please enter a valid number.");
+            }
+        }
     }
 }
