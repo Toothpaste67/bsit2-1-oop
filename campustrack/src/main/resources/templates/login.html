@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Login')}"></head>
+<body>
+<main class="auth">
+  <div class="card">
+    <div class="auth-brand">
+      <img th:src="@{/images/logo.png}" alt="">
+      <h1>CampusTrack</h1>
+      <p class="muted">Liceo de Cagayan University</p>
+    </div>
+
+    <div th:if="${param.error}" class="alert alert-error" role="alert">Invalid email address or password.</div>
+    <div th:if="${param.logout}" class="alert alert-success" role="status">You have logged out successfully.</div>
+    <div th:if="${success}" class="alert alert-success" role="status" th:text="${success}"></div>
+
+    <form th:action="@{/login}" method="post">
+      <label class="field">
+        <span>Institutional Email</span>
+        <input type="email" name="username" required autocomplete="username" placeholder="name@liceo.edu.ph">
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+      </label>
+      <button type="submit" class="btn btn-block">Sign In</button>
+    </form>
+
+    <div class="auth-foot">
+      <a th:href="@{/register}">Create Student Account</a>
+      <span class="muted">Forgot password? See the admin.</span>
+    </div>
+  </div>
+</main>
+</body>
+</html>

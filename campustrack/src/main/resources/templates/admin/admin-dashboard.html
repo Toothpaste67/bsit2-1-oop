@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Administrator Control Center')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<div class="app">
+  <aside th:replace="~{fragments/layout :: sidebar('dashboard')}"></aside>
+
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>Administrator Control Center</h1>
+        <p>Liceo de Cagayan University System Management</p>
+      </div>
+    </div>
+
+    <th:block th:replace="~{fragments/layout :: alerts}"></th:block>
+
+    <div class="grid g4">
+      <div class="stat"><div class="label">Users</div><div class="value" th:text="${userCount}">0</div><p class="muted"><span th:text="${studentCount}">0</span> students</p></div>
+      <div class="stat"><div class="label">Live class sessions</div><div class="value" th:text="${activeSessions}">0</div><p class="muted"><span th:text="${attendanceCount}">0</span> attendance records</p></div>
+      <div class="stat"><div class="label">Pending reservations</div><div class="value" th:text="${pendingCount}">0</div><p class="muted">waiting for approval</p></div>
+      <div class="stat"><div class="label">Open lost &amp; found</div><div class="value" th:text="${openItemCount}">0</div><p class="muted">reported or matched</p></div>
+    </div>
+
+    <!-- Facility Approval Management -->
+    <div class="card">
+      <h3>Facility Reservation Approvals</h3>
+      <div class="table-wrap">
+        <table class="table cards">
+          <thead>
+          <tr><th>Requester</th><th>Facility</th><th>Date &amp; Time</th><th>Purpose</th><th>Status</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+          <tr th:each="r : ${reservations}">
+            <td data-label="Requester"><span th:text="${@names.user(r.userId)}"></span> <span class="muted" th:text="'(' + ${@names.role(r.userId)} + ')'"></span></td>
+            <td data-label="Facility" th:text="${@names.facility(r.facilityId)}"></td>
+            <td data-label="Date &amp; Time" th:text="${#temporals.format(r.reservationDate, 'MMM d, yyyy') + ' ' + r.startTime + '-' + r.endTime}"></td>
+            <td data-label="Purpose" th:text="${r.purpose}"></td>
+            <td data-label="Status">
+              <span class="badge" th:text="${r.status}"
+                    th:classappend="${r.status.name() == 'APPROVED'} ? 'b-green' : (${r.status.name() == 'PENDING'} ? 'b-yellow' : 'b-gray')"></span>
+              <div class="muted" th:if="${r.adminRemarks}" th:text="${r.adminRemarks}"></div>
+            </td>
+            <td data-label="Action" class="block">
+              <form th:action="@{/admin/reservations/update}" method="post" class="inline-form">
+                <input type="hidden" name="reservationId" th:value="${r.id}">
+                <input type="text" name="adminRemarks" placeholder="Remarks..." maxlength="255" aria-label="Remarks">
+                <button type="submit" name="status" value="APPROVED" class="btn btn-green btn-sm" th:disabled="${r.status.name() == 'APPROVED'}">Approve</button>
+                <button type="submit" name="status" value="REJECTED" class="btn btn-danger btn-sm" th:disabled="${r.status.name() == 'REJECTED'}">Reject</button>
+              </form>
+            </td>
+          </tr>
+          <tr th:if="${reservations.isEmpty()}"><td colspan="6" class="empty">No reservation requests yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="grid g2">
+      <!-- Lost & Found Lifecycle Management -->
+      <div class="card">
+        <h3>Lost &amp; Found Items Logs</h3>
+        <div class="table-wrap">
+          <table class="table cards">
+            <thead><tr><th>Title</th><th>Type</th><th>Reporter</th><th>Status</th><th>Update Lifecycle</th></tr></thead>
+            <tbody>
+            <tr th:each="item : ${lostFoundItems}">
+              <td data-label="Title"><strong th:text="${item.title}"></strong></td>
+              <td data-label="Type" th:text="${item.itemType}"></td>
+              <td data-label="Reporter" th:text="${@names.user(item.reporterId)}"></td>
+              <td data-label="Status"><span class="badge b-gray" th:text="${item.status}"></span></td>
+              <td data-label="Update" class="block">
+                <form th:action="@{/admin/lost-found/status}" method="post" class="inline-form">
+                  <input type="hidden" name="itemId" th:value="${item.id}">
+                  <select name="status" aria-label="New status">
+                    <option th:each="st : ${itemStatuses}" th:value="${st.name()}" th:text="${st}" th:selected="${st == item.status}"></option>
+                  </select>
+                  <button type="submit" class="btn btn-dark btn-sm">Update</button>
+                </form>
+              </td>
+            </tr>
+            <tr th:if="${lostFoundItems.isEmpty()}"><td colspan="5" class="empty">No lost &amp; found entries yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>Recent Activity</h3>
+          <a class="btn btn-outline btn-sm" th:href="@{/admin/audit}">Full audit log</a>
+        </div>
+        <div class="list">
+          <div th:each="e : ${recentAudit}">
+            <strong th:text="${e.action}"></strong> <span class="muted" th:text="${#temporals.format(e.timestamp, 'MMM d, h:mm a')}"></span>
+            <div class="muted"><span th:text="${e.actor}"></span> · <span th:text="${e.details}"></span></div>
+          </div>
+        </div>
+        <p class="empty" th:if="${recentAudit.isEmpty()}">Nothing logged yet.</p>
+      </div>
+    </div>
+  </main>
+</div>
+<nav th:replace="~{fragments/layout :: bottomnav('dashboard')}"></nav>
+</body>
+</html>

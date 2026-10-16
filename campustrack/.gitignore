@@ -1,0 +1,37 @@
+### Build output ###
+target/
+out/
+
+### Runtime data (.txt storage, uploaded photos) ###
+data/
+
+### Old code kept as a local backup ###
+backup-before-rewrite/
+
+### IntelliJ IDEA ###
+.idea/
+*.iml
+.kotlin
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store

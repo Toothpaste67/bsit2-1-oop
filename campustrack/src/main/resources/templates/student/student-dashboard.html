@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Student Dashboard')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<div class="app">
+  <aside th:replace="~{fragments/layout :: sidebar('dashboard')}"></aside>
+
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>Welcome, <span th:text="${user.fullName}">Student</span></h1>
+        <p>ID <span th:text="${user.idNumber}">ID</span> · Main Campus</p>
+      </div>
+      <a class="btn hide-mobile" th:href="@{/attendance}">📷 Scan QR</a>
+    </div>
+
+    <!-- Mobile: one big thumb-sized button at the top -->
+    <a class="scan-cta" th:href="@{/attendance(scan='1')}"><span class="ico">📷</span> Scan Class QR</a>
+
+    <div class="grid g3">
+      <div class="stat">
+        <div class="label">Overall attendance</div>
+        <div class="value" th:text="${sessionsTotal == 0} ? '-' : ${overallPercent} + '%'">0%</div>
+      </div>
+      <div class="stat">
+        <div class="label">Sessions attended</div>
+        <div class="value" th:text="${sessionsAttended} + ' / ' + ${sessionsTotal}">0 / 0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Subjects</div>
+        <div class="value" th:text="${stats.size()}">0</div>
+      </div>
+    </div>
+
+    <div class="grid side-main">
+      <div class="stack">
+        <!-- My Dynamic Institutional QR -->
+        <div class="card qr-display">
+          <h3>My Dynamic Institutional QR</h3>
+          <img th:src="'data:image/png;base64,' + ${qrBase64}" alt="Your personal QR code" width="200" height="200">
+          <p class="muted mono" th:text="${qrPayload}"></p>
+          <p class="muted">Show this to your teacher for a manual check-in.</p>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <h3>Attendance per Subject</h3>
+          <div class="table-wrap">
+            <table class="table cards">
+              <thead>
+              <tr><th>Subject</th><th class="num">Present</th><th class="num">Late</th><th class="num">Absent</th><th>Attendance</th></tr>
+              </thead>
+              <tbody>
+              <tr th:each="s : ${stats}">
+                <td data-label="Subject"><strong th:text="${s.code()}"></strong> <span class="muted" th:text="${s.name()}"></span></td>
+                <td data-label="Present" class="num" th:text="${s.present()}"></td>
+                <td data-label="Late" class="num" th:text="${s.late()}"></td>
+                <td data-label="Absent" class="num" th:text="${s.absent()}"></td>
+                <td data-label="Attendance">
+                  <span th:if="${s.total() == 0}" class="muted">No sessions yet</span>
+                  <span th:if="${s.total() > 0}">
+                    <strong th:text="${s.percent()} + '%'"></strong>
+                    <span class="meter"><span th:style="'width:' + ${s.percent()} + '%'"></span></span>
+                  </span>
+                </td>
+              </tr>
+              <tr th:if="${stats.isEmpty()}"><td colspan="5" class="empty">You are not enrolled in any class yet. Ask your teacher to add your ID number.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Recent Attendance</h3>
+            <a class="btn btn-outline btn-sm" th:href="@{/attendance}">Full history</a>
+          </div>
+          <div class="table-wrap">
+            <table class="table cards">
+              <thead><tr><th>Check-in</th><th>Subject</th><th>Status</th><th>Method</th></tr></thead>
+              <tbody>
+              <tr th:each="rec : ${history}">
+                <td data-label="Check-in" th:text="${#temporals.format(rec.checkInTime, 'MMM d, yyyy h:mm a')}"></td>
+                <td data-label="Subject" th:text="${@names.courseClass(rec.classId)}"></td>
+                <td data-label="Status"><span class="badge" th:text="${rec.status}"
+                    th:classappend="${rec.status.name() == 'PRESENT'} ? 'b-green' : (${rec.status.name() == 'LATE'} ? 'b-yellow' : 'b-red')"></span></td>
+                <td data-label="Method" th:text="${rec.entryMethod}"></td>
+              </tr>
+              <tr th:if="${history.isEmpty()}"><td colspan="4" class="empty">No attendance records yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Study areas and facilities -->
+    <div class="card">
+      <div class="card-head">
+        <h3>Study Areas &amp; Facilities</h3>
+        <a class="btn btn-sm" th:href="@{/reservations}">Reserve</a>
+      </div>
+      <div class="grid g3">
+        <div class="list-item" th:each="f : ${facilities}">
+          <div>
+            <h4 th:text="${f.name}"></h4>
+            <p class="muted"><span th:text="${f.location}"></span> · seats <span th:text="${f.capacity}"></span></p>
+          </div>
+        </div>
+      </div>
+      <p class="empty" th:if="${facilities.isEmpty()}">No facilities are listed yet.</p>
+    </div>
+  </main>
+</div>
+<nav th:replace="~{fragments/layout :: bottomnav('dashboard')}"></nav>
+</body>
+</html>

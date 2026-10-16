@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('User Management')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<div class="app">
+  <aside th:replace="~{fragments/layout :: sidebar('users')}"></aside>
+
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>User Management</h1>
+        <p>Add, edit and delete accounts.</p>
+      </div>
+    </div>
+
+    <th:block th:replace="~{fragments/layout :: alerts}"></th:block>
+
+    <div class="grid side-main">
+      <div class="card">
+        <h3>Add User</h3>
+        <form th:action="@{/admin/users/save}" method="post" autocomplete="off">
+          <label class="field"><span>Full name</span><input type="text" name="fullName" required maxlength="100"></label>
+          <label class="field"><span>Liceo email</span><input type="email" name="email" required maxlength="100" placeholder="user@liceo.edu.ph"></label>
+          <div class="form-row">
+            <label class="field"><span>ID number</span><input type="text" name="idNumber" required maxlength="50"></label>
+            <label class="field"><span>Role</span>
+              <select name="role" required>
+                <option th:each="r : ${roles}" th:value="${r.name()}" th:text="${r.label}" th:selected="${r.name() == 'STUDENT'}"></option>
+              </select>
+            </label>
+          </div>
+          <label class="field"><span>Password (at least 8 characters)</span><input type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password"></label>
+          <button type="submit" class="btn btn-block">Create Account</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <form th:action="@{/admin/users}" method="get" class="toolbar" style="margin-bottom:14px">
+          <label class="field"><span>Search</span><input type="text" name="q" th:value="${q}" placeholder="Name, email or ID number"></label>
+          <label class="field"><span>Role</span>
+            <select name="role">
+              <option value="">All roles</option>
+              <option th:each="r : ${roles}" th:value="${r.name()}" th:text="${r.label}" th:selected="${r == selectedRole}"></option>
+            </select>
+          </label>
+          <button type="submit" class="btn btn-dark">Filter</button>
+        </form>
+
+        <div class="table-wrap">
+          <table class="table cards">
+            <thead><tr><th>Name</th><th>Email</th><th>ID Number</th><th>Role</th><th>Actions</th></tr></thead>
+            <tbody>
+            <tr th:each="u : ${users}">
+              <td data-label="Name"><strong th:text="${u.fullName}"></strong></td>
+              <td data-label="Email" th:text="${u.email}"></td>
+              <td data-label="ID Number" class="mono" th:text="${u.idNumber}"></td>
+              <td data-label="Role"><span class="badge" th:text="${u.role.label}"
+                    th:classappend="${u.role.name() == 'ADMIN'} ? 'b-red' : (${u.role.name() == 'FACULTY'} ? 'b-blue' : 'b-gray')"></span></td>
+              <td data-label="Actions" class="block">
+                <details class="editor">
+                  <summary>Edit</summary>
+                  <form th:action="@{/admin/users/save}" method="post" autocomplete="off">
+                    <input type="hidden" name="id" th:value="${u.id}">
+                    <label class="field"><span>Full name</span><input type="text" name="fullName" required maxlength="100" th:value="${u.fullName}"></label>
+                    <label class="field"><span>Email</span><input type="email" name="email" required maxlength="100" th:value="${u.email}"></label>
+                    <div class="form-row">
+                      <label class="field"><span>ID number</span><input type="text" name="idNumber" required maxlength="50" th:value="${u.idNumber}"></label>
+                      <label class="field"><span>Role</span>
+                        <select name="role" required>
+                          <option th:each="r : ${roles}" th:value="${r.name()}" th:text="${r.label}" th:selected="${r == u.role}"></option>
+                        </select>
+                      </label>
+                    </div>
+                    <label class="field"><span>New password (leave blank to keep)</span><input type="password" name="password" minlength="8" maxlength="72" autocomplete="new-password"></label>
+                    <button type="submit" class="btn btn-sm">Save changes</button>
+                  </form>
+                  <form th:if="${u.id != user.id}" th:action="@{/admin/users/{id}/delete(id=${u.id})}" method="post" style="margin-top:8px"
+                        th:attr="data-confirm='Delete the account of ' + ${u.fullName} + '? This cannot be undone.'">
+                    <button type="submit" class="btn btn-danger btn-sm">Delete account</button>
+                  </form>
+                </details>
+              </td>
+            </tr>
+            <tr th:if="${users.isEmpty()}"><td colspan="5" class="empty">No users match the filter.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<nav th:replace="~{fragments/layout :: bottomnav('users')}"></nav>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Master Attendance Logs')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<div class="app">
+  <aside th:replace="~{fragments/layout :: sidebar('attendance')}"></aside>
+
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>Master Attendance Logs</h1>
+        <p>Filter by date, subject and role. Disputed records can be corrected here.</p>
+      </div>
+    </div>
+
+    <th:block th:replace="~{fragments/layout :: alerts}"></th:block>
+
+    <div class="card">
+      <form th:action="@{/admin/attendance}" method="get" class="toolbar">
+        <label class="field"><span>Date</span><input type="date" placeholder="YYYY-MM-DD" name="date" th:value="${selectedDate}"></label>
+        <label class="field"><span>Subject</span>
+          <select name="classId">
+            <option value="">All subjects</option>
+            <option th:each="k : ${classes}" th:value="${k.id}" th:text="${k.label}" th:selected="${k.id == selectedClassId}"></option>
+          </select>
+        </label>
+        <label class="field"><span>Role</span>
+          <select name="role">
+            <option value="">All roles</option>
+            <option th:each="r : ${roles}" th:value="${r.name()}" th:text="${r.label}" th:selected="${r == selectedRole}"></option>
+          </select>
+        </label>
+        <button type="submit" class="btn btn-dark">Apply</button>
+        <a class="btn btn-outline" th:href="@{/admin/attendance}">Clear</a>
+        <a class="btn btn-green"
+           th:href="@{/admin/attendance/export(date=${selectedDate},classId=${selectedClassId},role=${selectedRole?.name()})}">Export CSV</a>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3><span th:text="${records.size()}">0</span> record(s)</h3>
+      <div class="table-wrap">
+        <table class="table cards">
+          <thead>
+          <tr><th>Check-in</th><th>Student</th><th>ID Number</th><th>Subject</th><th>Status</th><th>Method</th><th>Note</th><th>Edit</th></tr>
+          </thead>
+          <tbody>
+          <tr th:each="rec : ${records}">
+            <td data-label="Check-in" th:text="${#temporals.format(rec.checkInTime, 'MMM d, yyyy h:mm a')}"></td>
+            <td data-label="Student" th:text="${@names.user(rec.userId)}"></td>
+            <td data-label="ID Number" class="mono" th:text="${@names.idNumber(rec.userId)}"></td>
+            <td data-label="Subject" th:text="${@names.courseClass(rec.classId)}"></td>
+            <td data-label="Status"><span class="badge" th:text="${rec.status}"
+                  th:classappend="${rec.status.name() == 'PRESENT'} ? 'b-green' : (${rec.status.name() == 'LATE'} ? 'b-yellow' : 'b-red')"></span></td>
+            <td data-label="Method" th:text="${rec.entryMethod}"></td>
+            <td data-label="Note" th:text="${rec.note} ?: '-'"></td>
+            <td data-label="Edit" class="block">
+              <details class="editor">
+                <summary>Edit</summary>
+                <form th:action="@{/admin/attendance/{id}/edit(id=${rec.id})}" method="post">
+                  <label class="field"><span>Status</span>
+                    <select name="status">
+                      <option th:each="st : ${statuses}" th:value="${st.name()}" th:text="${st}" th:selected="${st == rec.status}"></option>
+                    </select>
+                  </label>
+                  <label class="field"><span>Reason / note</span><input type="text" name="note" maxlength="200" th:value="${rec.note}"></label>
+                  <button type="submit" class="btn btn-sm">Save</button>
+                </form>
+              </details>
+            </td>
+          </tr>
+          <tr th:if="${records.isEmpty()}"><td colspan="8" class="empty">No attendance records match the filter.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<nav th:replace="~{fragments/layout :: bottomnav('attendance')}"></nav>
+</body>
+</html>

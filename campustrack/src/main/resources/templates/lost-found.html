@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Lost and Found')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<div class="app">
+  <aside th:replace="~{fragments/layout :: sidebar('lost-found')}"></aside>
+
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>Lost &amp; Found Management</h1>
+        <p>Report a missing item or log something you found. Owners claim items by answering a verification question.</p>
+      </div>
+    </div>
+
+    <th:block th:replace="~{fragments/layout :: alerts}"></th:block>
+
+    <!-- Filter and Search -->
+    <form th:action="@{/lost-found}" method="get" class="card toolbar">
+      <label class="field" style="flex:2"><span>Search</span>
+        <input type="text" name="keyword" th:value="${keyword}" placeholder="Search title or description...">
+      </label>
+      <label class="field"><span>Category</span>
+        <select name="category">
+          <option value="">All Categories</option>
+          <option th:each="cat : ${categories}" th:value="${cat}" th:text="${cat}" th:selected="${cat == selectedCategory}"></option>
+        </select>
+      </label>
+      <button type="submit" class="btn">Search</button>
+    </form>
+
+    <div class="grid side-main">
+      <!-- Report Form -->
+      <div class="card">
+        <h3>Report Lost / Log Found Item</h3>
+        <form th:action="@{/lost-found/report}" method="post" enctype="multipart/form-data">
+          <label class="field"><span>Item name</span><input type="text" name="title" required maxlength="120"></label>
+          <label class="field"><span>Detailed description</span><textarea name="description" required maxlength="2000"></textarea></label>
+          <div class="form-row">
+            <label class="field"><span>Type</span>
+              <select name="itemType" required>
+                <option value="LOST">LOST ITEM</option>
+                <option value="FOUND">FOUND ITEM</option>
+              </select>
+            </label>
+            <label class="field"><span>Category</span>
+              <select name="category" required>
+                <option th:each="cat : ${categories}" th:value="${cat}" th:text="${cat}"></option>
+              </select>
+            </label>
+          </div>
+          <label class="field"><span>Date lost / found</span><input type="date" placeholder="YYYY-MM-DD" name="itemDate" required th:max="${today}" th:value="${today}"></label>
+          <label class="field"><span>Last known / discovery location</span><input type="text" name="location" required maxlength="150"></label>
+          <label class="field"><span>Ownership verification question</span><input type="text" name="verificationQuestion" required maxlength="255" placeholder="e.g. What sticker is on the back?"></label>
+          <label class="field"><span>Correct answer (kept secret)</span><input type="text" name="verificationAnswer" required maxlength="100" autocomplete="off"></label>
+          <label class="field"><span>Photo (optional, up to 5 MB)</span><input type="file" name="image" accept="image/png,image/jpeg,image/gif,image/webp"></label>
+          <button type="submit" class="btn btn-block">Log Entry</button>
+        </form>
+      </div>
+
+      <!-- Items Feed -->
+      <div class="stack">
+        <p class="card empty" th:if="${items.isEmpty()}">No items match your search.</p>
+        <div class="card" th:each="item : ${items}">
+          <div class="card-head" style="margin-bottom:6px">
+            <h3>
+              <span class="badge" th:text="${item.itemType}" th:classappend="${item.itemType.name() == 'LOST'} ? 'b-red' : 'b-green'"></span>
+              <span th:text="${item.title}"></span>
+            </h3>
+            <div>
+              <span class="badge b-gray" th:text="${item.status}"></span>
+            </div>
+          </div>
+          <p th:text="${item.description}"></p>
+          <p class="muted" style="margin-top:6px"><span th:text="${item.category}"></span> · Location: <span th:text="${item.location}"></span>
+            · Date: <span th:text="${#temporals.format(item.itemDate, 'MMM d, yyyy')}"></span></p>
+          <img th:if="${item.photoFile != null}" th:src="@{/lost-found/photo/{id}(id=${item.id})}"
+               th:alt="'Photo of ' + ${item.title}" loading="lazy" style="margin-top:10px;max-height:180px;border-radius:8px">
+
+          <!-- Verification Claim Form -->
+          <form th:if="${item.open and item.reporterId != user.id}" th:action="@{/lost-found/claim}" method="post"
+                style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+            <input type="hidden" name="itemId" th:value="${item.id}">
+            <p class="muted"><strong>Security Question:</strong> <span th:text="${item.verificationQuestion}"></span></p>
+            <div class="inline-form" style="margin-top:6px">
+              <input type="text" name="verificationAnswer" required maxlength="100" autocomplete="off" placeholder="Answer to claim..." aria-label="Your answer">
+              <button type="submit" class="btn btn-dark btn-sm">Verify Claim</button>
+            </div>
+          </form>
+          <p class="muted" th:if="${item.open and item.reporterId == user.id}" style="margin-top:10px">You reported this item.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<nav th:replace="~{fragments/layout :: bottomnav('lost-found')}"></nav>
+</body>
+</html>

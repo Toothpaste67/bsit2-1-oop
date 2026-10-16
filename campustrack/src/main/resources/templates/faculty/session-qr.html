@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Class Session')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<div class="app">
+  <aside th:replace="~{fragments/layout :: sidebar('dashboard')}"></aside>
+
+  <main class="content" id="presenter">
+    <div class="page-head">
+      <div>
+        <h1 th:text="${@names.courseClass(cs.classId)}">Class</h1>
+        <p>Started <span th:text="${#temporals.format(cs.startedAt, 'MMM d, h:mm a')}"></span>
+          <span th:if="${!cs.active}"> · ended <span th:text="${#temporals.format(cs.endedAt, 'h:mm a')}"></span></span></p>
+      </div>
+      <div class="inline-form">
+        <button type="button" class="btn btn-dark" id="fullscreen-btn" th:if="${cs.active}">⛶ Full Screen</button>
+        <a class="btn btn-outline hide-fullscreen" th:href="@{/faculty/sessions/{id}/export(id=${cs.id})}">Export CSV</a>
+        <form th:if="${cs.active}" th:action="@{/faculty/sessions/{id}/end(id=${cs.id})}" method="post" class="hide-fullscreen"
+              data-confirm="End this session? Students who have not checked in will be marked absent.">
+          <button type="submit" class="btn btn-danger">End Session</button>
+        </form>
+        <a class="btn btn-outline hide-fullscreen" th:href="@{/faculty/dashboard}">Back</a>
+      </div>
+    </div>
+
+    <div class="hide-fullscreen"><th:block th:replace="~{fragments/layout :: alerts}"></th:block></div>
+    <div id="live-error" class="alert alert-error" role="alert" hidden></div>
+
+    <div th:class="${cs.active} ? 'presenter' : ''">
+      <!-- Left: large rotating QR -->
+      <div class="card qr-stage" th:if="${cs.active}">
+        <img id="qr-image" alt="Attendance QR code. It changes every few seconds." width="520" height="520"
+             src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">
+        <div class="rotate-bar" aria-hidden="true"><span id="rotate-progress"></span></div>
+        <p class="muted">New code in <strong id="seconds-left">-</strong>s · screenshots stop working after that</p>
+        <p style="margin-top:10px">Camera not working? Type this code: <span class="manual-code mono" id="manual-code">-</span></p>
+      </div>
+
+      <!-- Right: live counter and feed -->
+      <div class="card">
+        <div class="counters" aria-live="polite">
+          <div class="counter b-green"><b id="count-present">0</b><span>Present</span></div>
+          <div class="counter b-yellow"><b id="count-late">0</b><span>Late</span></div>
+          <div class="counter b-red"><b id="count-absent">0</b><span>Absent</span></div>
+          <div class="counter b-gray"><b id="count-waiting">0</b><span th:text="${cs.active} ? 'Waiting' : 'No record'">Waiting</span></div>
+        </div>
+        <div class="feed table-wrap">
+          <table class="table">
+            <thead><tr><th>Student</th><th>Status</th><th>Time</th><th class="hide-fullscreen">Manual override</th></tr></thead>
+            <tbody id="feed-body"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<nav th:replace="~{fragments/layout :: bottomnav('dashboard')}"></nav>
+
+<script th:inline="javascript">
+  const SESSION_ID = /*[[${cs.id}]]*/ 0;
+  const ROTATE_SECONDS = /*[[${rotateSeconds}]]*/ 20;
+  let sessionActive = /*[[${cs.active}]]*/ true;
+</script>
+<script>
+  (function () {
+    const base = '/faculty/sessions/' + SESSION_ID;
+    const badge = { PRESENT: 'b-green', LATE: 'b-yellow', ABSENT: 'b-red', WAITING: 'b-gray' };
+    let currentWindow = null;
+    let secondsLeft = ROTATE_SECONDS;
+    let timer = null;
+
+    function text(id, value) {
+      const element = document.getElementById(id);
+      if (element) element.textContent = value;
+    }
+
+    function renderCountdown() {
+      text('seconds-left', secondsLeft);
+      const bar = document.getElementById('rotate-progress');
+      if (bar) bar.style.width = Math.max(0, secondsLeft / ROTATE_SECONDS * 100) + '%';
+    }
+
+    function renderRows(rows) {
+      const body = document.getElementById('feed-body');
+      if (rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="4" class="empty">No students are enrolled in this class yet.</td></tr>';
+        return;
+      }
+      body.innerHTML = rows.map(function (row) {
+        const esc = CampusTrack.escape;
+        const buttons = ['PRESENT', 'LATE', 'ABSENT'].map(function (status) {
+          return '<button type="button" class="btn btn-outline btn-sm" data-student="' + row.studentId
+            + '" data-status="' + status + '"' + (row.status === status ? ' disabled' : '') + '>'
+            + status.charAt(0) + status.slice(1).toLowerCase() + '</button>';
+        }).join('');
+        return '<tr>'
+          + '<td><strong>' + esc(row.name) + '</strong><br><span class="muted mono">' + esc(row.idNumber) + '</span></td>'
+          + '<td><span class="badge ' + (badge[row.status] || 'b-gray') + '">' + esc(row.status) + '</span>'
+          + (row.method ? '<br><span class="muted">' + esc(row.method) + '</span>' : '') + '</td>'
+          + '<td>' + esc(row.time) + '</td>'
+          + '<td class="hide-fullscreen"><div class="override">' + buttons + '</div></td>'
+          + '</tr>';
+      }).join('');
+    }
+
+    let refreshing = false;
+    let stopped = false;
+
+    function stopPolling(message) {
+      stopped = true;
+      clearInterval(pollTimer);
+      clearInterval(timer);
+      const box = document.getElementById('live-error');
+      box.textContent = message;
+      box.hidden = false;
+    }
+
+    async function refresh() {
+      if (refreshing || stopped) return; // never stack requests on a slow or lost connection
+      refreshing = true;
+      try {
+        const url = base + '/live' + (currentWindow === null ? '' : '?window=' + currentWindow);
+        const response = await fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+        if (response.redirected || response.status === 401 || response.status === 403 || response.status === 404) {
+          stopPolling('You have been signed out. Reload the page and sign in again.');
+          return;
+        }
+        if (!response.ok) throw new Error('Connection lost. Retrying...');
+        const data = await response.json();
+        document.getElementById('live-error').hidden = true;
+
+        if (data.active && data.qr) {
+          document.getElementById('qr-image').src = data.qr;
+          text('manual-code', data.manualCode);
+        }
+        if (data.active) {
+          currentWindow = data.window;
+          secondsLeft = data.secondsLeft;
+          renderCountdown();
+        } else if (sessionActive) {
+          location.reload(); // ended from another tab
+          return;
+        }
+        text('count-present', data.present);
+        text('count-late', data.late);
+        text('count-absent', data.absent);
+        text('count-waiting', data.waiting);
+        renderRows(data.rows);
+      } catch (error) {
+        const box = document.getElementById('live-error');
+        box.textContent = 'Connection lost. Retrying...';
+        box.hidden = false;
+        secondsLeft = 3; // wait for the next regular poll instead of retrying every second
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    // Manual override buttons (event delegation: the rows are re-rendered on every refresh)
+    document.getElementById('feed-body').addEventListener('click', async function (event) {
+      const button = event.target.closest('button[data-student]');
+      if (!button) return;
+      button.disabled = true;
+      try {
+        const reply = await CampusTrack.post(base + '/override',
+          { studentId: button.dataset.student, status: button.dataset.status }, true);
+        if (!reply.success) alert(reply.message);
+      } catch (error) {
+        alert(error.message);
+      }
+      refresh();
+    });
+
+    const fullscreenButton = document.getElementById('fullscreen-btn');
+    if (fullscreenButton) {
+      fullscreenButton.addEventListener('click', function () {
+        const stage = document.getElementById('presenter');
+        if (document.fullscreenElement) document.exitFullscreen();
+        else if (stage.requestFullscreen) stage.requestFullscreen();
+        else alert('Full screen is not supported by this browser.');
+      });
+      document.addEventListener('fullscreenchange', function () {
+        fullscreenButton.textContent = document.fullscreenElement ? 'Exit Full Screen' : '⛶ Full Screen';
+      });
+    }
+
+    let pollTimer = null;
+    refresh();
+    if (sessionActive) {
+      pollTimer = setInterval(refresh, 3000); // live counter and feed
+      timer = setInterval(function () {      // smooth countdown between refreshes
+        secondsLeft = secondsLeft > 0 ? secondsLeft - 1 : 0;
+        renderCountdown();
+        if (secondsLeft === 0) refresh();    // fetch the next code the moment it rotates
+      }, 1000);
+    }
+  })();
+</script>
+</body>
+</html>

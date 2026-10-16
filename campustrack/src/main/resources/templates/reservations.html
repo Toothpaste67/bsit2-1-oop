@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Facility Reservations')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<div class="app">
+  <aside th:replace="~{fragments/layout :: sidebar('reservations')}"></aside>
+
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>Facility Reservation System</h1>
+        <p>Browse the Main Campus facilities, then request a time slot.</p>
+      </div>
+      <!-- Date to view -->
+      <form th:action="@{/reservations}" method="get" class="inline-form">
+        <input type="date" placeholder="YYYY-MM-DD" name="date" th:value="${selectedDate}" aria-label="Date">
+        <button type="submit" class="btn btn-dark">View</button>
+      </form>
+    </div>
+
+    <th:block th:replace="~{fragments/layout :: alerts}"></th:block>
+
+    <div class="grid side-main">
+      <!-- Reservation Request Form -->
+      <div class="card">
+        <h3>Submit Facility Request</h3>
+        <p class="empty" th:if="${facilities.isEmpty()}">No facilities are open for reservation right now.</p>
+        <form th:if="${!facilities.isEmpty()}" th:action="@{/reservations/book}" method="post">
+          <label class="field">
+            <span>Select Facility</span>
+            <select name="facilityId" required>
+              <option th:each="f : ${facilities}" th:value="${f.id}" th:text="${f.name + ' (' + f.code + ')'}"></option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Reservation Date</span>
+            <input type="date" placeholder="YYYY-MM-DD" name="reservationDate" th:value="${selectedDate}" th:min="${today}" required>
+          </label>
+          <div class="form-row">
+            <label class="field"><span>Start Time</span><input type="time" placeholder="HH:MM (24-hour)" name="startTime" required></label>
+            <label class="field"><span>End Time</span><input type="time" placeholder="HH:MM (24-hour)" name="endTime" required></label>
+          </div>
+          <label class="field">
+            <span>Usage Purpose</span>
+            <textarea name="purpose" required maxlength="255" placeholder="Academic or organization activity details..."></textarea>
+          </label>
+          <button type="submit" class="btn btn-block">Request Reservation</button>
+        </form>
+      </div>
+
+      <div class="stack">
+        <!-- Calendar & Availability View -->
+        <div class="card">
+          <h3>Facility Availability Schedule
+            <span class="muted" th:text="'· ' + ${#temporals.format(selectedDate, 'EEE, MMM d, yyyy')}"></span></h3>
+          <div class="list">
+            <div class="list-item" th:each="res : ${dailySchedule}">
+              <div>
+                <h4 th:text="${@names.facility(res.facilityId)}"></h4>
+                <p class="muted" th:text="${res.startTime + ' - ' + res.endTime + ' | Purpose: ' + res.purpose}"></p>
+              </div>
+              <span class="badge" th:text="${res.status}" th:classappend="${res.status.name() == 'APPROVED'} ? 'b-green' : 'b-yellow'"></span>
+            </div>
+          </div>
+          <p class="empty" th:if="${dailySchedule.isEmpty()}">Nothing is booked on this date. Every facility is free.</p>
+        </div>
+
+        <div class="card">
+          <h3>My Request History</h3>
+          <div class="table-wrap">
+            <table class="table cards">
+              <thead><tr><th>Facility</th><th>Date</th><th>Time</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+              <tr th:each="my : ${myReservations}">
+                <td data-label="Facility"><strong th:text="${@names.facility(my.facilityId)}"></strong></td>
+                <td data-label="Date" th:text="${#temporals.format(my.reservationDate, 'MMM d, yyyy')}"></td>
+                <td data-label="Time" th:text="${my.startTime + ' - ' + my.endTime}"></td>
+                <td data-label="Status">
+                  <span class="badge" th:text="${my.status}"
+                        th:classappend="${my.status.name() == 'APPROVED'} ? 'b-green' : (${my.status.name() == 'PENDING'} ? 'b-yellow' : 'b-gray')"></span>
+                  <div class="muted" th:if="${my.adminRemarks}" th:text="${my.adminRemarks}"></div>
+                </td>
+                <td data-label="Action">
+                  <form th:if="${my.holdsSlot()}" th:action="@{/reservations/{id}/cancel(id=${my.id})}" method="post"
+                        data-confirm="Cancel this reservation?">
+                    <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+                  </form>
+                </td>
+              </tr>
+              <tr th:if="${myReservations.isEmpty()}"><td colspan="5" class="empty">You have not requested any facility yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<nav th:replace="~{fragments/layout :: bottomnav('reservations')}"></nav>
+</body>
+</html>

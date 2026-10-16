@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Attendance')}"></head>
+<body th:attr="data-user-id=${user.id}">
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<div class="app">
+  <aside th:replace="~{fragments/layout :: sidebar('attendance')}"></aside>
+
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>CampusTrack Attendance</h1>
+        <p>Scan the QR code your teacher is showing. It changes every few seconds, so scan it live.</p>
+      </div>
+    </div>
+
+    <th:block th:replace="~{fragments/layout :: alerts}"></th:block>
+    <div id="scan-page-status" class="alert" role="status" hidden></div>
+
+    <div class="grid g2">
+      <div class="stack">
+        <!-- Record Attendance Check-In -->
+        <div class="card">
+          <h3>Record Attendance Check-In</h3>
+          <button type="button" class="scan-cta" style="display:flex" id="start-scan-btn"><span class="ico">📷</span> Start Camera Scanner</button>
+
+          <!-- Fallback 1: manual code -->
+          <form th:action="@{/attendance/scan}" method="post" enctype="multipart/form-data" style="margin-top:18px">
+            <label class="field">
+              <span>Manual code (shown under the QR, e.g. 12-345678)</span>
+              <input type="text" name="qrCode" inputmode="text" autocomplete="off" placeholder="Enter or paste the code">
+            </label>
+            <!-- Fallback 2: picture of the QR for phones with a broken live camera -->
+            <label class="field">
+              <span>OR upload a photo of the QR code</span>
+              <input type="file" name="qrFile" accept="image/*">
+            </label>
+            <button type="submit" class="btn btn-dark btn-block">Submit Attendance</button>
+          </form>
+        </div>
+
+        <!-- Offline Network Queue Sync -->
+        <div class="card">
+          <h3>Offline Network Queue Sync</h3>
+          <p class="muted">If the campus network drops while you scan, the scan is saved on this phone and sent later.</p>
+          <div class="inline-form" style="margin-top:10px">
+            <span>Queued entries: <strong id="queue-count">0</strong></span>
+            <button type="button" class="btn btn-dark btn-sm" id="sync-btn" disabled>Sync Queue Now</button>
+          </div>
+          <div id="queue-status" class="alert" role="status" style="margin-top:10px" hidden></div>
+        </div>
+      </div>
+
+      <!-- Attendance Log History -->
+      <div class="card">
+        <h3>Attendance Log History</h3>
+        <div class="table-wrap">
+          <table class="table cards">
+            <thead><tr><th>Check-in</th><th>Subject</th><th>Status</th><th>Method</th></tr></thead>
+            <tbody>
+            <tr th:each="rec : ${records}">
+              <td data-label="Check-in" th:text="${#temporals.format(rec.checkInTime, 'MMM d, yyyy h:mm a')}"></td>
+              <td data-label="Subject" th:text="${@names.courseClass(rec.classId)}"></td>
+              <td data-label="Status"><span class="badge" th:text="${rec.status}"
+                  th:classappend="${rec.status.name() == 'PRESENT'} ? 'b-green' : (${rec.status.name() == 'LATE'} ? 'b-yellow' : 'b-red')"></span></td>
+              <td data-label="Method" th:text="${rec.entryMethod}"></td>
+            </tr>
+            <tr th:if="${records.isEmpty()}"><td colspan="4" class="empty">No attendance records found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<nav th:replace="~{fragments/layout :: bottomnav('attendance')}"></nav>
+
+<!-- Full-screen camera view -->
+<div class="scanner-overlay" id="scanner-overlay" hidden>
+  <div class="scanner-bar">
+    <strong>Scan Class QR</strong>
+    <button type="button" class="btn btn-outline btn-sm" id="close-scan-btn">Close</button>
+  </div>
+  <div class="scanner-body"><div id="reader"></div></div>
+  <div class="scanner-status" id="scanner-status" role="status" aria-live="polite"></div>
+</div>
+
+<!-- Success pop-up: class name and time -->
+<div class="modal" id="checkin-popup" role="dialog" aria-modal="true" aria-labelledby="popup-title" th:hidden="${checkIn == null}">
+  <div class="modal-box">
+    <div class="tick" aria-hidden="true">✓</div>
+    <h2 id="popup-title">Attendance recorded</h2>
+    <p><strong id="popup-class" th:text="${checkIn != null} ? ${checkIn.className()}"></strong></p>
+    <p class="muted">Checked in at <span id="popup-time" th:text="${checkIn != null} ? ${checkIn.time()}"></span></p>
+    <p style="margin-top:8px"><span class="badge b-green" id="popup-status" th:text="${checkIn != null} ? ${checkIn.status()}"></span></p>
+    <button type="button" class="btn btn-block" id="popup-done">Done</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script th:src="@{/js/offline-sync.js}"></script>
+<script th:src="@{/js/camera-scanner.js}"></script>
+</body>
+</html>

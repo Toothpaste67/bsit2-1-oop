@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Account Registration')}"></head>
+<body>
+<main class="auth">
+  <div class="card">
+    <div class="auth-brand">
+      <h1>Student Registration</h1>
+      <p class="muted">Restricted to valid @liceo.edu.ph emails. Faculty and admin accounts are created by the administrator.</p>
+    </div>
+
+    <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+
+    <form th:action="@{/register}" method="post">
+      <label class="field">
+        <span>Full Name</span>
+        <input type="text" name="fullName" required maxlength="100" autocomplete="name" th:value="${fullName}">
+      </label>
+      <label class="field">
+        <span>Liceo Email Address</span>
+        <input type="email" name="email" required maxlength="100" autocomplete="email" placeholder="user@liceo.edu.ph" th:value="${email}">
+      </label>
+      <label class="field">
+        <span>Student ID Number</span>
+        <input type="text" name="idNumber" required maxlength="50" placeholder="2026-XXXXX" th:value="${idNumber}">
+      </label>
+      <label class="field">
+        <span>Password (at least 8 characters)</span>
+        <input type="password" name="password" required minlength="8" maxlength="72" autocomplete="new-password">
+      </label>
+      <button type="submit" class="btn btn-block">Complete Registration</button>
+    </form>
+
+    <div class="auth-foot">
+      <span class="muted">Already registered?</span>
+      <a th:href="@{/login}">Login</a>
+    </div>
+  </div>
+</main>
+</body>
+</html>

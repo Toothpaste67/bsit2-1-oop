@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Facilities')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: topbar}"></header>
+<div class="app">
+  <aside th:replace="~{fragments/layout :: sidebar('facilities')}"></aside>
+
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>Facilities</h1>
+        <p>Add, edit and remove the Main Campus facilities that can be reserved.</p>
+      </div>
+    </div>
+
+    <th:block th:replace="~{fragments/layout :: alerts}"></th:block>
+
+    <div class="grid side-main">
+      <!-- Add facility -->
+      <div class="card">
+        <h3>Add Facility</h3>
+        <form th:action="@{/admin/facilities/save}" method="post">
+          <label class="field"><span>Name</span><input type="text" name="name" required maxlength="100" placeholder="Audio Visual Room 2"></label>
+          <div class="form-row">
+            <label class="field"><span>Code</span><input type="text" name="code" required maxlength="30" placeholder="AVR-2"></label>
+            <label class="field"><span>Capacity</span><input type="number" name="capacity" required min="1" max="100000"></label>
+          </div>
+          <label class="field"><span>Location</span><input type="text" name="location" required maxlength="150" placeholder="Building and floor"></label>
+          <label class="field"><span>Description</span><input type="text" name="description" maxlength="255"></label>
+          <input type="hidden" name="active" value="true">
+          <button type="submit" class="btn btn-block">Add Facility</button>
+        </form>
+      </div>
+
+      <div class="stack">
+        <!-- Facilities -->
+        <div class="card">
+          <h3>Reservable Facilities</h3>
+          <div class="list">
+            <div class="list-item" th:each="f : ${facilities}" style="display:block">
+              <div class="card-head" style="margin-bottom:4px">
+                <div>
+                  <h4><span th:text="${f.name}"></span> <span class="muted mono" th:text="${f.code}"></span></h4>
+                  <p class="muted"><span th:text="${f.location}"></span> · seats <span th:text="${f.capacity}"></span></p>
+                  <p class="muted" th:if="${f.description}" th:text="${f.description}"></p>
+                </div>
+                <span class="badge" th:text="${f.active} ? 'Active' : 'Inactive'" th:classappend="${f.active} ? 'b-green' : 'b-gray'"></span>
+              </div>
+              <details class="editor">
+                <summary>Edit</summary>
+                <form th:action="@{/admin/facilities/save}" method="post">
+                  <input type="hidden" name="id" th:value="${f.id}">
+                  <label class="field"><span>Name</span><input type="text" name="name" required maxlength="100" th:value="${f.name}"></label>
+                  <div class="form-row">
+                    <label class="field"><span>Code</span><input type="text" name="code" required maxlength="30" th:value="${f.code}"></label>
+                    <label class="field"><span>Capacity</span><input type="number" name="capacity" required min="1" max="100000" th:value="${f.capacity}"></label>
+                  </div>
+                  <label class="field"><span>Location</span><input type="text" name="location" required maxlength="150" th:value="${f.location}"></label>
+                  <label class="field"><span>Description</span><input type="text" name="description" maxlength="255" th:value="${f.description}"></label>
+                  <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+                    <input type="checkbox" name="active" value="true" th:checked="${f.active}"> Open for reservations
+                  </label>
+                  <button type="submit" class="btn btn-sm">Save changes</button>
+                </form>
+                <form th:action="@{/admin/facilities/{id}/delete(id=${f.id})}" method="post" style="margin-top:8px"
+                      th:attr="data-confirm='Delete ' + ${f.name} + '?'">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete facility</button>
+                </form>
+              </details>
+            </div>
+          </div>
+          <p class="empty" th:if="${facilities.isEmpty()}">No facilities yet. Add one with the form.</p>
+        </div>
+
+        <!-- Facility usage report -->
+        <div class="card">
+          <h3>Facility Usage Report</h3>
+          <div class="table-wrap">
+            <table class="table cards">
+              <thead><tr><th>Facility</th><th class="num">Approved bookings</th><th class="num">Hours booked</th><th class="num">Pending requests</th></tr></thead>
+              <tbody>
+              <tr th:each="row : ${usage}">
+                <td data-label="Facility" th:text="${row.facility()}"></td>
+                <td data-label="Approved" class="num" th:text="${row.approved()}"></td>
+                <td data-label="Hours" class="num" th:text="${row.hours()}"></td>
+                <td data-label="Pending" class="num" th:text="${row.pending()}"></td>
+              </tr>
+              <tr th:if="${usage.isEmpty()}"><td colspan="4" class="empty">No facilities yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<nav th:replace="~{fragments/layout :: bottomnav('facilities')}"></nav>
+</body>
+</html>

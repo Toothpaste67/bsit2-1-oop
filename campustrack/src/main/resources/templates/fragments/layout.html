@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<!-- <head> shared by every page. The CSRF meta tags are what fetch() calls read. -->
+<head th:fragment="head(title)">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="_csrf" th:content="${_csrf?.token}">
+  <meta name="_csrf_header" th:content="${_csrf?.headerName}">
+  <title th:text="${title} + ' - CampusTrack'">CampusTrack</title>
+  <link rel="icon" th:href="@{/images/logo.png}">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+  <script th:src="@{/js/app.js}" defer></script>
+</head>
+
+<body>
+
+<!-- Mobile top bar -->
+<header class="topbar" th:fragment="topbar">
+  <div class="brand">
+    <img th:src="@{/images/logo.png}" alt="">
+    <strong>CampusTrack</strong>
+  </div>
+  <form th:action="@{/logout}" method="post">
+    <button type="submit" class="btn-logout">Logout</button>
+  </form>
+</header>
+
+<!-- Menu links. Each role only gets its own links, so students never see admin or faculty pages. -->
+<th:block th:fragment="links(active)">
+  <th:block sec:authorize="hasRole('STUDENT')">
+    <a th:href="@{/student/dashboard}" th:classappend="${active == 'dashboard'} ? 'active'"><span class="ico">🏠</span><span>Home</span></a>
+    <a th:href="@{/attendance}" th:classappend="${active == 'attendance'} ? 'active'"><span class="ico">📷</span><span>Scan QR</span></a>
+  </th:block>
+  <th:block sec:authorize="hasRole('FACULTY')">
+    <a th:href="@{/faculty/dashboard}" th:classappend="${active == 'dashboard'} ? 'active'"><span class="ico">🏠</span><span>Classes</span></a>
+  </th:block>
+  <th:block sec:authorize="hasRole('ADMIN')">
+    <a th:href="@{/admin/dashboard}" th:classappend="${active == 'dashboard'} ? 'active'"><span class="ico">🏠</span><span>Dashboard</span></a>
+    <a th:href="@{/admin/users}" th:classappend="${active == 'users'} ? 'active'"><span class="ico">👥</span><span>Users</span></a>
+    <a th:href="@{/admin/attendance}" th:classappend="${active == 'attendance'} ? 'active'"><span class="ico">📋</span><span>Attendance</span></a>
+    <a th:href="@{/admin/facilities}" th:classappend="${active == 'facilities'} ? 'active'"><span class="ico">🏫</span><span>Facilities</span></a>
+    <a th:href="@{/admin/audit}" th:classappend="${active == 'audit'} ? 'active'"><span class="ico">🧾</span><span>Audit Log</span></a>
+  </th:block>
+  <a th:href="@{/lost-found}" th:classappend="${active == 'lost-found'} ? 'active'"><span class="ico">🔎</span><span>Lost &amp; Found</span></a>
+  <a th:href="@{/reservations}" th:classappend="${active == 'reservations'} ? 'active'"><span class="ico">📅</span><span>Reservations</span></a>
+</th:block>
+
+<!-- Desktop sidebar -->
+<aside class="sidebar" th:fragment="sidebar(active)">
+  <div class="brand">
+    <img th:src="@{/images/logo.png}" alt="">
+    <div>
+      <strong>CampusTrack</strong>
+      <small>Liceo de Cagayan University</small>
+    </div>
+  </div>
+  <nav class="nav" aria-label="Main">
+    <th:block th:replace="~{fragments/layout :: links(${active})}"></th:block>
+  </nav>
+  <div class="who">
+    <strong sec:authentication="principal.user.fullName">User</strong>
+    <small><span sec:authentication="principal.user.role.label">Role</span> · Main Campus</small>
+    <form th:action="@{/logout}" method="post">
+      <button type="submit" class="btn-logout">Logout</button>
+    </form>
+  </div>
+</aside>
+
+<!-- Mobile bottom navigation -->
+<nav class="bottom-nav" aria-label="Main" th:fragment="bottomnav(active)">
+  <th:block th:replace="~{fragments/layout :: links(${active})}"></th:block>
+</nav>
+
+<!-- Flash messages -->
+<th:block th:fragment="alerts">
+  <div th:if="${success}" class="alert alert-success" role="status" th:text="${success}"></div>
+  <div th:if="${error}" class="alert alert-error" role="alert" th:text="${error}"></div>
+</th:block>
+
+</body>
+</html>

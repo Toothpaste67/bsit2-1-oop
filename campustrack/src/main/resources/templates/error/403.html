@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Access Denied')}"></head>
+<body>
+<main class="error-page">
+  <div>
+    <div class="code">403</div>
+    <h1>Access denied</h1>
+    <p>Your account is not allowed to open this page, or the page was open too long and its security token expired.</p>
+    <a class="btn" th:href="@{/dashboard}">Back to my dashboard</a>
+  </div>
+</main>
+</body>
+</html>
